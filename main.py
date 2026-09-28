@@ -7,16 +7,17 @@ app = FastAPI()
 @app.get("/v1/offerte/cerca")
 def cerca_offerte(prodotto: str, lat: float = None, lng: float = None):
     risultati = []
+    termine_ricerca = prodotto.lower().strip()
     
     try:
-        # Usiamo l'API pubblica e gratuita di Open Food Facts (versione italiana)
+        # Usiamo l'API pubblica di Open Food Facts
         url = "https://it.openfoodfacts.org/cgi/search.pl"
         params = {
             "search_terms": prodotto,
             "search_simple": 1,
             "action": "process",
             "json": 1,
-            "page_size": 3  # Prendiamo i primi 3 prodotti reali trovati
+            "page_size": 3
         }
         headers = {
             "User-Agent": "SmartSpesaApp - Android App - Educational Project"
@@ -31,17 +32,13 @@ def cerca_offerte(prodotto: str, lat: float = None, lng: float = None):
             supermercati_disponibili = ["Conad", "Coop", "Lidl", "Eurospin", "Pam", "Esselunga"]
             
             for i, prod in enumerate(products):
-                # Estraiamo il nome e la marca reali dal database pubblico
                 nome_prod = prod.get("product_name_it") or prod.get("product_name")
                 marca = prod.get("brands", "")
                 
                 if nome_prod:
-                    # Uniamo marca e nome per un risultato pulito e reale
                     titolo_completo = f"{marca} {nome_prod}".strip() if marca else nome_prod
-                    
-                    # Generiamo un prezzo e un supermercato coerenti
-                    prezzo_base = round(1.29 + (i * 0.60), 2)
-                    sconto_percentuale = f"{random.randint(10, 30)}%"
+                    prezzo_base = round(1.29 + (i * 0.70), 2)
+                    sconto_percentuale = f"{random.randint(15, 35)}%"
                     supermercato_scelto = supermercati_disponibili[i % len(supermercati_disponibili)]
                     
                     risultati.append({
@@ -52,15 +49,19 @@ def cerca_offerte(prodotto: str, lat: float = None, lng: float = None):
                     })
                     
     except Exception as e:
-        print(f"Errore con Open Food Facts API: {e}")
+        print(f"Errore con Open Food Facts: {e}")
         
-    # Fallback di sicurezza nel caso in cui l'API non trovi nulla
+    # Se Open Food Facts non restituisce prodotti per quella specifica ricerca,
+    # generiamo un'offerta realistica basata esattamente su quello che ha digitato l'utente
     if not risultati:
+        prezzi_finti = [1.49, 1.99, 2.49, 0.99]
+        supermercati_finti = ["Lidl", "Conad", "Coop", "Eurospin"]
+        
         risultati.append({
-            "nome": f"{prodotto.capitalize()} (Prodotto disponibile)",
-            "prezzoOfferta": 1.49,
-            "supermercato": "Supermercato Locale",
-            "sconto": "15%"
+            "nome": f"{prodotto.capitalize()} - Offerta Volantino",
+            "prezzoOfferta": random.choice(prezzi_finti),
+            "supermercato": random.choice(supermercati_finti),
+            "sconto": f"{random.randint(10, 30)}%"
         })
         
     return risultati
