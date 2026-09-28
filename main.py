@@ -29,7 +29,7 @@ def cerca_offerte(prodotto: str, lat: float = None, lng: float = None):
             data = response.json()
             products = data.get("products", [])
             
-            supermercati_disponibili = ["Conad", "Coop", "Lidl", "Eurospin", "Pam", "Esselunga"]
+            supermercati_disponibili = ["Conad", "Coop", "Lidl", "Eurospin", "Pam", "Esselunga", "Mega"]
             
             for i, prod in enumerate(products):
                 nome_prod = prod.get("product_name_it") or prod.get("product_name")
