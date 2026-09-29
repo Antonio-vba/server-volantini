@@ -26,7 +26,7 @@ class ScadenzaServer(BaseModel):
     categoria: str
     pagata: bool = False
 
-# 1. Rotta per SCARICARE tutte le scadenze dal Google Sheet
+# 1. Rotta per SCARICARE tutte le scadenze (sia pagate che da pagare) dal Google Sheet
 @app.get("/v1/scadenze")
 def ottieni_scadenze():
     try:
@@ -74,7 +74,7 @@ def aggiungi_scadenza(scadenza: ScadenzaServer):
     except Exception as e:
         return {"status": "errore", "messaggio": str(e)}
 
-# 3. Rotta per SEGNARE una bolletta come PAGATA nel Google Sheet
+# 3. Rotta per SEGNARE una bolletta come PAGATA (Archiviata) nel Google Sheet
 @app.put("/v1/scadenze/{scadenza_id}/paga")
 def segna_pagata(scadenza_id: int):
     try:
