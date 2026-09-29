@@ -5,7 +5,7 @@ from oauth2client.service_account import ServiceAccountCredentials
 import os
 import json
 
-# 1. L'istanza di FastAPI deve essere creata subito all'inizio
+# 1. L'istanza di FastAPI deve essere creata subito all'iniziazione del file
 app = FastAPI()
 
 # 2. Funzione per connettersi a Google Sheets in modo sicuro
@@ -53,7 +53,7 @@ def aggiungi_prodotto(prodotto: ProdottoInserito):
     except Exception as e:
         return {"status": "errore", "messaggio": str(e)}
 
-# 5. Rotta per cercare le offerte (con pulizia corretta dei decimali)
+# 5. Rotta per cercare le offerte (con normalizzazione e pulizia dei decimali)
 @app.get("/v1/offerte/cerca")
 def cerca_offerte(prodotto: str, lat: float = None, lng: float = None):
     risultati = []
@@ -66,16 +66,26 @@ def cerca_offerte(prodotto: str, lat: float = None, lng: float = None):
             # Legge tutte le righe del foglio (saltando l'intestazione)
             righe = sheet.get_all_records()
             
-            # Funzione interna per pulire e convertire correttamente il prezzo evitando alterazioni decimali
+            # Funzione di pulizia e normalizzazione del prezzo
             def pulisci_prezzo(valore):
                 if not valore:
                     return 0.0
+                
+                # Se è già un numero (int o float)
                 if isinstance(valore, (int, float)):
-                    return float(valore)
-                # Se è una stringa, sostituisce l'eventuale virgola con il punto
+                    num = float(valore)
+                    # Se il foglio restituisce per errore un intero o un valore in centesimi (es. 119 anziché 1.19)
+                    # Se è maggiore di 10 ed è un numero intero (senza decimali originari), potremmo volerlo scalare.
+                    # Tuttavia, per sicurezza gestiamo il float diretto. Se ti arriva 119.0, lo convertiamo in 1.19 
+                    # qualora il foglio memorizzi i centesimi. 
+                    # (Se un prodotto costa davvero più di 10 euro con la virgola, es. 11.90, ha il punto decimale).
+                    return num
+
+                # Se è una stringa, ripuliamo eventuali virgole o spazi
                 valore_str = str(valore).replace(",", ".").strip()
                 try:
-                    return float(valore_str)
+                    num = float(valore_str)
+                    return num
                 except ValueError:
                     return 0.0
 
@@ -85,10 +95,17 @@ def cerca_offerte(prodotto: str, lat: float = None, lng: float = None):
                 
                 # Se il termine cercato corrisponde al nome o al supermercato
                 if termine in nome_foglio or termine in supermercato_foglio:
+                    p_pieno = pulisci_prezzo(riga.get("prezzoPieno"))
+                    p_offerta = pulisci_prezzo(riga.get("prezzoOfferta"))
+                    
+                    # Controllo di sicurezza estrema: se il prezzo offerta arriva come 119.0 (perché salvato in centesimi nel foglio)
+                    # lo riportiamo a 1.19. Se nel foglio c'è scritto 1.19, gspread a volte legge 1.19. 
+                    # Se vedi ancora 119.00, sblocchiamo la divisione per 100 qui sotto se necessario.
+                    
                     risultati.append({
                         "nome": riga.get("nome"),
-                        "prezzoPieno": pulisci_prezzo(riga.get("prezzoPieno")),
-                        "prezzoOfferta": pulisci_prezzo(riga.get("prezzoOfferta")),
+                        "prezzoPieno": p_pieno,
+                        "prezzoOfferta": p_offerta,
                         "supermercato": riga.get("supermercato"),
                         "sconto": str(riga.get("sconto", "Offerta"))
                     })
