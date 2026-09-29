@@ -17,7 +17,6 @@ def get_sheets_client():
         return client
     return None
 
-# Modello aggiornato con il campo 'nota'
 class ScadenzaServer(BaseModel):
     id: int
     nome: str
@@ -27,7 +26,6 @@ class ScadenzaServer(BaseModel):
     pagata: bool = False
     nota: str = ""
 
-# --- SCADENZE ---
 @app.get("/v1/scadenze")
 def ottieni_scadenze():
     try:
@@ -40,13 +38,20 @@ def ottieni_scadenze():
             raw_importo = str(riga.get("importo", 0)).replace(",", ".").strip()
             importo_val = float(raw_importo) if raw_importo else 0.0
 
+            # Gestione robusta del valore booleano 'pagata' letto da Google Sheets
+            val_pagata = riga.get("pagata", False)
+            if isinstance(val_pagata, str):
+                pagata_bool = val_pagata.strip().lower() in ["true", "1", "yes", "vero"]
+            else:
+                pagata_bool = bool(val_pagata)
+
             scadenze.append({
                 "id": i + 1,
                 "nome": str(riga.get("nome", "")),
                 "importo": importo_val,
                 "dataScadenza": str(riga.get("dataScadenza", "")),
-                "categoria": str(riga.get("categoria", "Utenze")),
-                "pagata": bool(riga.get("pagata", False)),
+                    "categoria": str(riga.get("categoria", "Utenze")),
+                "pagata": pagata_bool,
                 "nota": str(riga.get("nota", ""))
             })
         return scadenze
@@ -61,7 +66,7 @@ def aggiungi_scadenza(scadenza: ScadenzaServer):
         if not client: return {"status": "errore", "messaggio": "Client non disponibile"}
         sheet = client.open("SmartSpesaDB").sheet1
         
-        # Inserisce riga: Nome, Importo, Data, Categoria, Pagata (False), Nota
+        # Inseriamo la riga imponendo chiaramente False per 'pagata'
         sheet.append_row([
             scadenza.nome,
             float(scadenza.importo),
@@ -80,6 +85,7 @@ def segna_pagata(scadenza_id: int):
         client = get_sheets_client()
         if not client: return {"status": "errore", "messaggio": "Client non disponibile"}
         sheet = client.open("SmartSpesaDB").sheet1
+        # Aggiorna la quinta colonna (quella del campo 'pagata') a True
         sheet.update_cell(scadenza_id + 1, 5, True)
         return {"status": "successo"}
     except Exception as e:
