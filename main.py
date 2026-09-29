@@ -73,3 +73,24 @@ def aggiungi_scadenza(scadenza: ScadenzaServer):
         return {"status": "successo", "messaggio": "Scadenza salvata nel foglio!"}
     except Exception as e:
         return {"status": "errore", "messaggio": str(e)}
+
+# 3. Rotta per SEGNARE una bolletta come PAGATA nel Google Sheet
+@app.put("/v1/scadenze/{scadenza_id}/paga")
+def segna_pagata(scadenza_id: int):
+    try:
+        client = get_sheets_client()
+        if not client:
+            return {"status": "errore", "messaggio": "Credenziali Google non configurate."}
+        
+        sheet = client.open("SmartSpesaDB").sheet1
+        
+        # scadenza_id corrisponde all'indice + 1. Nel foglio Google, 
+        # la riga 1 è l'intestazione, quindi la riga dati è scadenza_id + 1
+        riga_foglio = scadenza_id + 1
+        
+        # La colonna 'pagata' è la quinta colonna nel nostro foglio
+        sheet.update_cell(riga_foglio, 5, True)
+        
+        return {"status": "successo", "messaggio": "Bolletta segnata come pagata!"}
+    except Exception as e:
+        return {"status": "errore", "messaggio": str(e)}
