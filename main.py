@@ -80,13 +80,13 @@ def aggiungi_scadenza(scadenza: ScadenzaServer):
         if not client: return {"status": "errore", "messaggio": "Client non disponibile"}
         sheet = client.open("SmartSpesaDB").sheet1
         
-        # Converte esplicitamente l'importo in float puro per forzare Google Fogli a memorizzarlo
-        # come numero nativo anziché come testo, prevenendo lo spostamento di punti o virgole.
-        importo_numerico = float(scadenza.importo)
+        # Formatta l'importo come stringa con punto fisso (es. "15.30")
+        # Ideale per le celle di Google Fogli impostate come "Testo normale"
+        importo_str = f"{float(scadenza.importo):.2f}"
 
         sheet.append_row([
             scadenza.nome,
-            importo_numerico,
+            importo_str,
             scadenza.dataScadenza,
             scadenza.categoria,
             False,
