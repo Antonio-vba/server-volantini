@@ -80,10 +80,13 @@ def aggiungi_scadenza(scadenza: ScadenzaServer):
         if not client: return {"status": "errore", "messaggio": "Client non disponibile"}
         sheet = client.open("SmartSpesaDB").sheet1
         
-        # Inserisce la riga imponendo correttamente False per 'pagata' e salvando la nota
+        # Converte esplicitamente l'importo in float puro per forzare Google Fogli a memorizzarlo
+        # come numero nativo anziché come testo, prevenendo lo spostamento di punti o virgole.
+        importo_numerico = float(scadenza.importo)
+
         sheet.append_row([
             scadenza.nome,
-            float(scadenza.importo),
+            importo_numerico,
             scadenza.dataScadenza,
             scadenza.categoria,
             False,
