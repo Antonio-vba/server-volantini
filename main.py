@@ -26,6 +26,7 @@ class ScadenzaServer(BaseModel):
     pagata: bool = False
     nota: str = ""
 
+# --- SCADENZE ---
 @app.get("/v1/scadenze")
 def ottieni_scadenze():
     try:
@@ -35,10 +36,23 @@ def ottieni_scadenze():
         righe = sheet.get_all_records()
         scadenze = []
         for i, riga in enumerate(righe):
-            raw_importo = str(riga.get("importo", 0)).replace(",", ".").strip()
-            importo_val = float(raw_importo) if raw_importo else 0.0
+            raw_importo = str(riga.get("importo", 0)).strip()
+            
+            # Pulisce la stringa dell'importo gestendo in modo sicuro sia la virgola che il punto
+            if "," in raw_importo and "." in raw_importo:
+                if raw_importo.find(",") > raw_importo.find("."):
+                    raw_importo = raw_importo.replace(".", "").replace(",", ".")
+                else:
+                    raw_importo = raw_importo.replace(",", "")
+            else:
+                raw_importo = raw_importo.replace(",", ".")
 
-            # Gestione robusta del valore booleano 'pagata' letto da Google Sheets
+            try:
+                importo_val = float(raw_importo) if raw_importo else 0.0
+            except ValueError:
+                importo_val = 0.0
+
+            # Gestione robusta del valore booleano 'pagata'
             val_pagata = riga.get("pagata", False)
             if isinstance(val_pagata, str):
                 pagata_bool = val_pagata.strip().lower() in ["true", "1", "yes", "vero"]
@@ -50,7 +64,7 @@ def ottieni_scadenze():
                 "nome": str(riga.get("nome", "")),
                 "importo": importo_val,
                 "dataScadenza": str(riga.get("dataScadenza", "")),
-                    "categoria": str(riga.get("categoria", "Utenze")),
+                "categoria": str(riga.get("categoria", "Generale")),
                 "pagata": pagata_bool,
                 "nota": str(riga.get("nota", ""))
             })
@@ -66,7 +80,7 @@ def aggiungi_scadenza(scadenza: ScadenzaServer):
         if not client: return {"status": "errore", "messaggio": "Client non disponibile"}
         sheet = client.open("SmartSpesaDB").sheet1
         
-        # Inseriamo la riga imponendo chiaramente False per 'pagata'
+        # Inserisce la riga imponendo correttamente False per 'pagata' e salvando la nota
         sheet.append_row([
             scadenza.nome,
             float(scadenza.importo),
@@ -85,7 +99,7 @@ def segna_pagata(scadenza_id: int):
         client = get_sheets_client()
         if not client: return {"status": "errore", "messaggio": "Client non disponibile"}
         sheet = client.open("SmartSpesaDB").sheet1
-        # Aggiorna la quinta colonna (quella del campo 'pagata') a True
+        # Aggiorna la quinta colonna (corrispondente al campo 'pagata') a True
         sheet.update_cell(scadenza_id + 1, 5, True)
         return {"status": "successo"}
     except Exception as e:
